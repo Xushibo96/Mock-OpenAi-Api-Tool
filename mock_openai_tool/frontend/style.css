@@ -1,0 +1,53 @@
+/* 通用样式 */
+body {
+    font-family: Arial, sans-serif; /* 设置字体 */
+    line-height: 1.6; /* 行高 */
+    margin: 0; /* 清除默认边距 */
+    padding: 0; /* 清除默认内边距 */
+    background-color: #f4f4f4; /* 背景色 */
+}
+
+/* 标题样式 */
+h1 {
+    text-align: center; /* 中心对齐 */
+    color: #333; /* 标题颜色 */
+}
+
+/* 按钮样式 */
+.button {
+    display: inline-block; /* 块级元素 */
+    background-color: #4CAF50; /* 按钮背景色 */
+    color: white; /* 按钮字体颜色 */
+    padding: 10px 20px; /* 内边距 */
+    border: none; /* 无边框 */
+    border-radius: 5px; /* 圆角 */
+    text-decoration: none; /* 去掉下划线 */
+    font-size: 16px; /* 字体大小 */
+    transition: background-color 0.3s; /* 过渡效果 */
+}
+
+.button:hover {
+    background-color: #45a049; /* 悬停背景色 */
+}
+
+/* Toast 消息样式 */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #323232;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+/* 其他元素样式示例：
+   根据需要，你可以添加更多的元素样式，如表单、列表等 */

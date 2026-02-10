@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="ch">
+<head>
+    <meta charset="UTF-8"/>
+    <title>FAKE OpenAi Api Server</title>
+    <link rel="icon" href="/frontend/favicon_io/favicon.ico" type="image/x-icon">
+    <link rel="icon" sizes="192x192" href="/frontend/favicon_io/android-chrome-192x192.png" type="image/png">
+    <link rel="icon" sizes="512x512" href="/frontend/favicon_io/android-chrome-512x512.png" type="image/png">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #f3f4f6;
+            height: 100vh;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .h-full {
+            height: 100%;
+        }
+
+        .w-half {
+            width: 50%;
+        }
+
+        .border-r {
+            border-right: 1px solid #ccc;
+        }
+
+        .border {
+            border: 1px solid #ddd;
+        }
+
+        .p-4 {
+            padding: 16px;
+        }
+
+        .p-2 {
+            padding: 8px;
+        }
+
+        .rounded {
+            border-radius: 6px;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+
+        .mt-6 {
+            margin-top: 1.5rem;
+        }
+
+        .shadow-sm {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .bg-white {
+            background: #fff;
+        }
+
+        .bg-gray-50 {
+            background: #f9fafb;
+        }
+
+        .text-sm {
+            font-size: 14px;
+        }
+
+        .text-xs {
+            font-size: 12px;
+        }
+
+        .text-gray-400 {
+            color: #9ca3af;
+        }
+
+        .text-gray-500 {
+            color: #6b7280;
+        }
+
+        .text-gray-700 {
+            color: #374151;
+        }
+
+        .text-gray-800 {
+            color: #1f2937;
+        }
+
+        .text-blue {
+            color: #1d4ed8;
+        }
+
+        .text-green {
+            color: #059669;
+        }
+
+        .text-red {
+            color: #dc2626;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .hover-bg {
+            transition: background-color 0.2s ease;
+        }
+
+        .hover-bg:hover {
+            background-color: #f3f4f6;
+        }
+
+        .input, select {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 14px;
+        }
+
+        textarea {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .w-24 {
+            width: 6rem;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-light {
+            background-color: #e0f2fe;
+            color: #0284c7;
+        }
+
+        .btn-light:hover {
+            background-color: #bae6fd;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .send-button {
+            width: 150px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #323232;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        pre {
+            background: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        /* Tab styles */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            color: #6b7280;
+        }
+
+        .tab.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .queue-item {
+            border: 1px solid #e5e7eb;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .queue-item:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-green {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-red {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Bypass history expandable card styles */
+        .bypass-record {
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .bypass-record:hover {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .bypass-record-header {
+            padding: 12px;
+            cursor: pointer;
+            user-select: none;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .bypass-record-header:hover {
+            background: #f9fafb;
+        }
+
+        .bypass-record-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .bypass-record.expanded .bypass-record-details {
+            max-height: 500px;
+        }
+
+        .bypass-record-content {
+            padding: 12px;
+            background: #f9fafb;
+        }
+
+        .bypass-record-json {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 8px;
+            padding-top: 32px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .json-container {
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            padding: 4px 8px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Bypass config form styles */
+        .bypass-config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .form-label {
+            text-align: left;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-input {
+            text-align: right;
+        }
+
+        .form-input .input {
+            width: 100%;
+            text-align: left;
+        }
+
+        .expand-icon {
+            display: inline-block;
+            transition: transform 0.3s;
+            margin-right: 4px;
+            font-size: 10px;
+        }
+
+        .bypass-record.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .overflow-y-auto {
+            overflow-y: auto;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .space-y-2 > * + * {
+            margin-top: 0.5rem;
+        }
+
+        /* Switch toggle styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2563eb;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+<div class="flex h-full">
+    <!-- Left Panel -->
+    <div class="w-half border-r p-4 bg-white overflow-y-auto" id="request-panel">
+        <div id="completed-section" class="mt-6">
+            <h3 class="text-sm font-semibold text-green mb-2">
+                ✅ 已处理的请求
+            </h3>
+            <div id="completed-list" class="space-y-2 text-sm text-gray-700"></div>
+        </div>
+        <h2 class="text-sm font-semibold mb-4 text-blue">
+            📥 当前请求
+        </h2>
+        <div id="request-display" class="text-sm text-gray-800">
+            <p class="text-gray-400">🔄 等待请求中...</p>
+        </div>
+    </div>
+
+    <!-- Right Panel with Tabs -->
+    <div class="w-half p-4 flex flex-col bg-gray-50">
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('manual')">
+                ↩️ 手动响应
+            </div>
+            <div class="tab" onclick="switchTab('queue')">
+                📋 预设队列
+            </div>
+            <div class="tab" onclick="switchTab('bypass')">
+                🔀 Bypass Mode
+            </div>
+        </div>
+
+        <!-- Manual Response Tab -->
+        <div id="manual-tab" class="tab-content active flex flex-col flex-1">
+            <div class="mb-3">
+                <label class="text-sm">设置响应码</label>
+                <input id="status-code" type="number" value="200" class="input w-24 ml-2"/>
+            </div>
+            <div class="mt-2">
+                <button class="btn-light btn mr-2" onclick="loadTemplate(1)">🧩 标签描述模板</button>
+                <button class="btn-light btn" onclick="loadTemplate(2)">🧩 分类结果模板</button>
+            </div>
+            <p class="text-sm mb-2 mt-2">响应体</p>
+            <textarea id="response-body" class="input font-mono flex-1 mb-4 bg-white text-sm" rows="40" spellcheck="false">
+{
+  "id": "test_id",
+  "object": "chat.completion",
+  "created": 0,
+  "model": "dynamic",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "reasoning_content": null,
+        "content": "```json\n{\n  \"usage\": \"\",\n  \"response_key\": {},\n  \"query_key\": {}\n}\n```",
+        "tool_calls": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop",
+      "stop_reason": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 449,
+    "total_tokens": 1022,
+    "completion_tokens": 573,
+    "prompt_tokens_details": null
+  },
+  "prompt_logprobs": null
+}</textarea>
+            <div class="button-container">
+                <button onclick="sendResponse()" id="send-button" class="btn send-button">
+                    📤 Send Response
+                </button>
+            </div>
+        </div>
+
+        <!-- Queue Management Tab -->
+        <div id="queue-tab" class="tab-content flex flex-col flex-1">
+            <!-- IP Selection -->
+            <div class="mb-3">
+                <label class="text-sm font-semibold">选择IP队列</label>
+                <select id="queue-ip-select" class="input ml-2" onchange="loadQueueForIP()">
+                    <option value="">-- 选择IP或输入新IP --</option>
+                </select>
+                <input id="new-ip-input" type="text" placeholder="或输入新IP地址" class="input ml-2" style="width: 200px;"/>
+            </div>
+
+            <!-- Queue Info -->
+            <div class="mb-3 p-2 bg-white rounded border">
+                <span class="text-sm">当前队列: <strong id="current-queue-ip">-</strong></span>
+                <span class="badge badge-blue ml-2" id="queue-length">0 items</span>
+            </div>
+
+            <!-- Add Response -->
+            <div class="mb-3">
+                <div class="flex mb-2">
+                    <input id="queue-status-code" type="number" value="200" class="input w-24" placeholder="Status"/>
+                    <button onclick="addToQueue()" class="btn ml-2">➕ 添加到队列</button>
+                    <button onclick="clearCurrentQueue()" class="btn-danger btn ml-2">🗑️ 清空队列</button>
+                </div>
+                <textarea id="queue-response-body" class="input font-mono bg-white text-sm" rows="8" spellcheck="false" placeholder="输入响应JSON...">
+{
+  "id": "preset-1",
+  "message": "This is a preset response"
+}</textarea>
+            </div>
+
+            <!-- Import/Export -->
+            <div class="mb-3 flex">
+                <button onclick="document.getElementById('import-file').click()" class="btn-light btn mr-2">
+                    📥 导入JSON
+                </button>
+                <input type="file" id="import-file" class="file-input" accept=".json" onchange="importQueue()"/>
+                <button onclick="exportQueue()" class="btn-light btn mr-2">📤 导出队列</button>
+                <button onclick="exportAllQueues()" class="btn-light btn">📦 导出所有队列</button>
+            </div>
+
+            <!-- Queue List -->
+            <div class="flex-1 overflow-y-auto">
+                <h3 class="text-sm font-semibold mb-2">队列预览</h3>
+                <div id="queue-items-list" class="text-sm">
+                    <p class="text-gray-400">选择IP查看队列内容...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bypass Mode Tab -->
+        <div id="bypass-tab" class="tab-content flex flex-col flex-1">
+            <!-- Bypass Status -->
+            <div class="mb-4 p-3 bg-white rounded border">
+                <div class="flex items-center mb-2">
+                    <span class="text-sm font-semibold mr-3">Bypass 模式</span>
+                    <label class="switch">
+                        <input type="checkbox" id="bypass-enabled" onchange="toggleBypass()">
+                        <span class="slider"></span>
+                    </label>
+                    <span id="bypass-status-text" class="ml-3 text-sm text-gray-500">禁用</span>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div class="mb-4 p-3 bg-white rounded border">
+                <h3 class="text-sm font-semibold mb-3">转发配置</h3>
+
+                <div class="bypass-config-form">
+                    <!-- HTTPS Checkbox -->
+                    <div class="form-row">
+                        <label class="form-label">使用 HTTPS</label>
+                        <div class="form-input">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="bypass-https" class="mr-2" />
+                                <span class="text-xs text-gray-500">启用 SSL/TLS 加密连接</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Target Host -->
+                    <div class="form-row">
+                        <label class="form-label">目标主机</label>
+                        <div class="form-input">
+                            <input id="bypass-host" type="text" class="input" placeholder="api.openai.com" />
+                        </div>
+                    </div>
+
+                    <!-- Port -->
+                    <div class="form-row">
+                        <label class="form-label">端口</label>
+                        <div class="form-input">
+                            <input id="bypass-port" type="number" class="input" placeholder="443" />
+                        </div>
+                    </div>
+
+                    <!-- URI -->
+                    <div class="form-row">
+                        <label class="form-label">请求路径</label>
+                        <div class="form-input">
+                            <input id="bypass-uri" type="text" class="input" placeholder="/v1/chat/completions" />
+                        </div>
+                    </div>
+
+                    <!-- API Key -->
+                    <div class="form-row">
+                        <label class="form-label">API Key</label>
+                        <div class="form-input">
+                            <input id="bypass-apikey" type="password" class="input" placeholder="sk-... (可选)" />
+                        </div>
+                    </div>
+
+                    <!-- Timeout -->
+                    <div class="form-row">
+                        <label class="form-label">超时时间 (秒)</label>
+                        <div class="form-input">
+                            <input id="bypass-timeout" type="number" class="input" placeholder="60" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                    <button onclick="saveBypassConfig()" class="btn">💾 保存配置</button>
+                    <button onclick="loadBypassConfig()" class="btn-light">🔄 重新加载</button>
+                </div>
+            </div>
+
+            <!-- Bypass Requests History -->
+            <div class="flex-1 overflow-y-auto">
+                <h3 class="text-sm font-semibold mb-2">转发记录</h3>
+                <div id="bypass-history" class="text-sm">
+                    <p class="text-gray-400">暂无转发记录...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    let ws = new WebSocket("ws://" + location.hostname + ":" + location.port + "/ws");
+    let currentRequestId = null;
+    let currentQueueIP = null;
+    let allQueues = {};
+
+    ws.onmessage = function (event) {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "new_request") {
+            const r = msg.data;
+            currentRequestId = r.id;
+            renderRequest(r);
+            enableSend(true);
+        } else if (msg.type === "completed_request") {
+            renderCompletedRequest(msg.data);
+        } else if (msg.type === "queue_updated") {
+            // Reload queue when updated
+            if (msg.ip && currentQueueIP === msg.ip) {
+                loadQueueForIP();
+            }
+            refreshIPList();
+        } else if (msg.type === "all_queues_updated") {
+            refreshIPList();
+            if (currentQueueIP) {
+                loadQueueForIP();
+            }
+        } else if (msg.type === "bypass_request") {
+            handleBypassRequest(msg.data);
+        } else if (msg.type === "bypass_response") {
+            handleBypassResponse(msg.data);
+        } else if (msg.type === "bypass_config_updated") {
+            // Reload bypass config when updated
+            loadBypassConfig();
+        }
+    };
+
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+        if (tabName === 'manual') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('manual-tab').classList.add('active');
+        } else if (tabName === 'queue') {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('queue-tab').classList.add('active');
+            refreshIPList();
+        } else if (tabName === 'bypass') {
+            document.querySelectorAll('.tab')[2].classList.add('active');
+            document.getElementById('bypass-tab').classList.add('active');
+            loadBypassConfig();
+        }
+    }
+
+    // Request rendering (existing code)
+    function renderRequest(r) {
+        document.getElementById("request-display").innerHTML = `
+        <div class="border p-3 rounded bg-gray-50 shadow-sm">
+          <p><strong>IP:</strong> ${r.ip}:${r.port}</p>
+          <p class="text-xs text-gray-500 mt-1">Path: ${r.path}</p>
+          <pre class="text-xs">${JSON.stringify(r.body, null, 2)}</pre>
+        </div>
+      `;
+    }
+
+    function sendResponse() {
+        if (!currentRequestId) {
+            showToast("No request to respond to", true);
+            return;
+        }
+        const status = parseInt(document.getElementById("status-code").value);
+        let body;
+        try {
+            body = JSON.parse(document.getElementById("response-body").value);
+        } catch (e) {
+            showToast("Invalid JSON", true);
+            return;
+        }
+        ws.send(JSON.stringify({
+            type: "send_response",
+            id: currentRequestId,
+            status_code: status,
+            response: body
+        }));
+        showToast("Response sent");
+        currentRequestId = null;
+        document.getElementById("request-display").innerHTML = "<p class='text-gray-400'>🔄 Waiting for next request...</p>";
+        enableSend(false);
+    }
+
+    function enableSend(enabled) {
+        const btn = document.getElementById("send-button");
+        if (enabled) {
+            btn.classList.remove("disabled");
+        } else {
+            btn.classList.add("disabled");
+        }
+    }
+
+    function loadTemplate(n) {
+        const t1 = `{
+  "id": "chatcmpl-7f75905912c94ed79d3fdd2959f1521a",
+  "object": "chat.completion",
+  "created": 1752744728,
+  "model": "dynamic",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "reasoning_content": null,
+        "content": "\`\`\`json\\n{\\n  \\"usage\\": \\"\\",\\n  \\"response_key\\": {},\\n  \\"query_key\\": {}\\n}\\n\`\`\`",
+        "tool_calls": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop",
+      "stop_reason": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 449,
+    "total_tokens": 1022,
+    "completion_tokens": 573,
+    "prompt_tokens_details": null
+  },
+  "prompt_logprobs": null
+}`;
+        const t2 = `{
+  "id": "chatcmpl-7f75905912c94ed79d3fdd2959f1521a",
+  "object": "chat.completion",
+  "created": 1752744728,
+  "model": "dynamic",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "reasoning_content": null,
+        "content": "\`\`\`json\\n{\\n  \\"categories\\": {}\\n}\\n\`\`\`",
+        "tool_calls": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop",
+      "stop_reason": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 449,
+    "total_tokens": 1022,
+    "completion_tokens": 573,
+    "prompt_tokens_details": null
+  },
+  "prompt_logprobs": null
+}`;
+        document.getElementById("response-body").value = n === 1 ? t1 : t2;
+    }
+
+    function showToast(message, isError = false) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.style.backgroundColor = isError ? "#dc2626" : "#16a34a";
+        toast.classList.add("show");
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 3000);
+    }
+
+    function renderCompletedRequest(data) {
+        // Store in history
+        manualHistory.unshift({
+            id: data.id || Date.now(),
+            timestamp: new Date(),
+            ip: data.ip,
+            port: data.port,
+            status_code: data.status_code,
+            request_body: data.body,
+            response_body: data.response
+        });
+
+        // Re-render the list
+        renderManualHistory();
+    }
+
+    function renderManualHistory() {
+        const container = document.getElementById('completed-list');
+        if (manualHistory.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm">暂无已完成的请求...</p>';
+            return;
+        }
+
+        container.innerHTML = manualHistory.map((record, index) => {
+            const statusBadge = record.status_code >= 200 && record.status_code < 300 ?
+                `<span class="badge badge-green">${record.status_code}</span>` :
+                record.status_code >= 400 ?
+                `<span class="badge badge-red">${record.status_code}</span>` :
+                `<span class="badge badge-blue">${record.status_code}</span>`;
+
+            // Format JSON with indentation
+            const formatJson = (obj) => {
+                if (!obj) return 'N/A';
+                return JSON.stringify(obj, null, 2);
+            };
+
+            const requestJson = formatJson(record.request_body);
+            const responseJson = formatJson(record.response_body);
+
+            return `
+                <div class="bypass-record" id="manual-record-${index}">
+                    <div class="bypass-record-header" onclick="toggleManualRecord(${index})">
+                        <div class="flex items-center gap-2 flex-1">
+                            <span class="expand-icon">▶</span>
+                            <span class="text-xs text-gray-500">
+                                ${record.timestamp.toLocaleTimeString()}
+                            </span>
+                            <span class="text-xs text-gray-600">
+                                ${record.ip}:${record.port}
+                            </span>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                        </div>
+                    </div>
+                    <div class="bypass-record-details">
+                        <div class="bypass-record-content">
+                            ${record.request_body ? `
+                            <div class="mb-3">
+                                <div class="text-xs font-semibold text-gray-700 mb-1">请求体:</div>
+                                <div class="json-container">
+                                    <button
+                                        id="copy-req-${index}"
+                                        class="copy-btn"
+                                        data-copy="${requestJson.replace(/"/g, '&quot;')}"
+                                        onclick="event.stopPropagation(); copyToClipboard('copy-req-${index}')">
+                                        📋 复制
+                                    </button>
+                                    <div class="bypass-record-json">${requestJson}</div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            ${record.response_body ? `
+                            <div class="mb-3">
+                                <div class="text-xs font-semibold text-gray-700 mb-1">响应体:</div>
+                                <div class="json-container">
+                                    <button
+                                        id="copy-res-${index}"
+                                        class="copy-btn"
+                                        data-copy="${responseJson.replace(/"/g, '&quot;')}"
+                                        onclick="event.stopPropagation(); copyToClipboard('copy-res-${index}')">
+                                        📋 复制
+                                    </button>
+                                    <div class="bypass-record-json">${responseJson}</div>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ========== Queue Management Functions ==========
+
+    async function refreshIPList() {
+        try {
+            const response = await fetch('/api/preset-queue');
+            const data = await response.json();
+            allQueues = data.queues;
+
+            const select = document.getElementById('queue-ip-select');
+            const currentValue = select.value;
+
+            select.innerHTML = '<option value="">-- 选择IP或输入新IP --</option>';
+            Object.keys(allQueues).forEach(ip => {
+                const option = document.createElement('option');
+                option.value = ip;
+                option.textContent = `${ip} (${allQueues[ip].count} items)`;
+                select.appendChild(option);
+            });
+
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        } catch (error) {
+            showToast('Failed to load IP list', true);
+        }
+    }
+
+    async function loadQueueForIP() {
+        let ip = document.getElementById('queue-ip-select').value;
+        if (!ip) {
+            ip = document.getElementById('new-ip-input').value.trim();
+        }
+
+        if (!ip) {
+            showToast('Please select or enter an IP address', true);
+            return;
+        }
+
+        currentQueueIP = ip;
+        document.getElementById('current-queue-ip').textContent = ip;
+        document.getElementById('new-ip-input').value = '';
+
+        try {
+            const response = await fetch(`/api/preset-queue/${ip}`);
+            const data = await response.json();
+
+            document.getElementById('queue-length').textContent = `${data.count} items`;
+
+            const list = document.getElementById('queue-items-list');
+            if (data.items.length === 0) {
+                list.innerHTML = '<p class="text-gray-400">队列为空</p>';
+            } else {
+                list.innerHTML = data.items.map((item, idx) => `
+                    <div class="queue-item">
+                        <div class="flex" style="justify-content: space-between; align-items: center;">
+                            <div>
+                                <span class="badge badge-blue">#${idx + 1}</span>
+                                <span class="badge ${item.status_code === 200 ? 'badge-green' : 'badge-red'}">${item.status_code}</span>
+                            </div>
+                            <button onclick="deleteQueueItem('${ip}', '${item.id}')" class="btn-danger btn btn-sm">删除</button>
+                        </div>
+                        <pre class="text-xs mt-2">${JSON.stringify(item.response, null, 2).substring(0, 200)}${JSON.stringify(item.response).length > 200 ? '...' : ''}</pre>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            showToast('Failed to load queue', true);
+        }
+    }
+
+    async function addToQueue() {
+        let ip = currentQueueIP || document.getElementById('new-ip-input').value.trim();
+        if (!ip) {
+            ip = document.getElementById('queue-ip-select').value;
+        }
+
+        if (!ip) {
+            showToast('Please select or enter an IP address', true);
+            return;
+        }
+
+        const statusCode = parseInt(document.getElementById('queue-status-code').value);
+        let responseBody;
+        try {
+            responseBody = JSON.parse(document.getElementById('queue-response-body').value);
+        } catch (e) {
+            showToast('Invalid JSON', true);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/preset-queue/${ip}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    response: responseBody,
+                    status_code: statusCode
+                })
+            });
+
+            if (response.ok) {
+                showToast('Added to queue');
+                currentQueueIP = ip;
+                loadQueueForIP();
+                refreshIPList();
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Failed to add', true);
+            }
+        } catch (error) {
+            showToast('Failed to add to queue', true);
+        }
+    }
+
+    async function deleteQueueItem(ip, itemId) {
+        try {
+            const response = await fetch(`/api/preset-queue/${ip}/${itemId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showToast('Item deleted');
+                loadQueueForIP();
+            } else {
+                showToast('Failed to delete', true);
+            }
+        } catch (error) {
+            showToast('Failed to delete item', true);
+        }
+    }
+
+    async function clearCurrentQueue() {
+        if (!currentQueueIP) {
+            showToast('No queue selected', true);
+            return;
+        }
+
+        if (!confirm(`Clear all items from queue ${currentQueueIP}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/preset-queue/${currentQueueIP}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showToast('Queue cleared');
+                loadQueueForIP();
+                refreshIPList();
+            } else {
+                showToast('Failed to clear queue', true);
+            }
+        } catch (error) {
+            showToast('Failed to clear queue', true);
+        }
+    }
+
+    async function importQueue() {
+        const file = document.getElementById('import-file').files[0];
+        if (!file) return;
+
+        let ip = currentQueueIP || document.getElementById('new-ip-input').value.trim();
+        if (!ip) {
+            ip = document.getElementById('queue-ip-select').value;
+        }
+
+        if (!ip) {
+            showToast('Please select or enter an IP address', true);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`/api/preset-queue/${ip}/import`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showToast(`Imported: ${result.added_count} added, ${result.failed_count} failed`);
+                currentQueueIP = ip;
+                loadQueueForIP();
+                refreshIPList();
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Import failed', true);
+            }
+        } catch (error) {
+            showToast('Failed to import', true);
+        }
+
+        document.getElementById('import-file').value = '';
+    }
+
+    async function exportQueue() {
+        if (!currentQueueIP) {
+            showToast('No queue selected', true);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/preset-queue/${currentQueueIP}/export`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `queue_${currentQueueIP}_${Date.now()}.json`;
+                a.click();
+                showToast('Queue exported');
+            } else {
+                showToast('Export failed', true);
+            }
+        } catch (error) {
+            showToast('Failed to export queue', true);
+        }
+    }
+
+    async function exportAllQueues() {
+        try {
+            const response = await fetch('/api/preset-queue/export');
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `queue_all_${Date.now()}.json`;
+                a.click();
+                showToast('All queues exported');
+            } else {
+                showToast('Export failed', true);
+            }
+        } catch (error) {
+            showToast('Failed to export all queues', true);
+        }
+    }
+
+    // ============ Bypass Mode Functions ============
+
+    let bypassHistory = [];
+    let manualHistory = [];
+
+    async function loadBypassConfig() {
+        try {
+            const response = await fetch('/api/bypass/config');
+            if (response.ok) {
+                const config = await response.json();
+                document.getElementById('bypass-host').value = config.target_host;
+                document.getElementById('bypass-port').value = config.target_port;
+                document.getElementById('bypass-uri').value = config.target_uri;
+                document.getElementById('bypass-https').checked = config.use_https;
+                document.getElementById('bypass-timeout').value = config.timeout;
+                document.getElementById('bypass-enabled').checked = config.enabled;
+
+                updateBypassStatus(config.enabled);
+            }
+        } catch (error) {
+            showToast('Failed to load bypass config', true);
+        }
+    }
+
+    async function saveBypassConfig() {
+        const config = {
+            target_host: document.getElementById('bypass-host').value,
+            target_port: parseInt(document.getElementById('bypass-port').value),
+            target_uri: document.getElementById('bypass-uri').value,
+            use_https: document.getElementById('bypass-https').checked,
+            timeout: parseInt(document.getElementById('bypass-timeout').value)
+        };
+
+        const apiKey = document.getElementById('bypass-apikey').value;
+        if (apiKey) {
+            config.api_key = apiKey;
+        }
+
+        try {
+            const response = await fetch('/api/bypass/config', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            });
+
+            if (response.ok) {
+                showToast('✅ 配置已保存');
+                // Clear password field after saving
+                document.getElementById('bypass-apikey').value = '';
+            } else {
+                const error = await response.json();
+                showToast(`❌ 保存失败: ${error.detail}`, true);
+            }
+        } catch (error) {
+            showToast('❌ 保存失败', true);
+        }
+    }
+
+    async function toggleBypass() {
+        const enabled = document.getElementById('bypass-enabled').checked;
+        const endpoint = enabled ? '/api/bypass/enable' : '/api/bypass/disable';
+
+        try {
+            const response = await fetch(endpoint, {method: 'POST'});
+            if (response.ok) {
+                updateBypassStatus(enabled);
+                showToast(enabled ? '✅ Bypass 已启用' : '⏸️ Bypass 已禁用');
+            } else {
+                const error = await response.json();
+                showToast(`❌ 操作失败: ${error.detail}`, true);
+                // Revert checkbox
+                document.getElementById('bypass-enabled').checked = !enabled;
+            }
+        } catch (error) {
+            showToast('❌ 操作失败', true);
+            document.getElementById('bypass-enabled').checked = !enabled;
+        }
+    }
+
+    function updateBypassStatus(enabled) {
+        const statusText = document.getElementById('bypass-status-text');
+        if (enabled) {
+            statusText.textContent = '✅ 启用';
+            statusText.style.color = '#059669';
+        } else {
+            statusText.textContent = '⏸️ 禁用';
+            statusText.style.color = '#6b7280';
+        }
+    }
+
+    function handleBypassRequest(data) {
+        const record = {
+            id: data.id,
+            timestamp: new Date(data.timestamp * 1000),
+            client_ip: data.client_ip,
+            target_url: data.target_url,
+            request_body: data.request_body,
+            status: 'pending'
+        };
+        bypassHistory.unshift(record);
+        renderBypassHistory();
+    }
+
+    function handleBypassResponse(data) {
+        const record = bypassHistory.find(r => r.id === data.id);
+        if (record) {
+            record.status = data.success ? 'success' : 'failed';
+            record.status_code = data.status_code;
+            record.response_body = data.response_body;
+            record.elapsed_ms = data.elapsed_ms;
+            record.error = data.error;
+            renderBypassHistory();
+        }
+    }
+
+    function renderBypassHistory() {
+        const container = document.getElementById('bypass-history');
+        if (bypassHistory.length === 0) {
+            container.innerHTML = '<p class="text-gray-400">暂无转发记录...</p>';
+            return;
+        }
+
+        container.innerHTML = bypassHistory.map((record, index) => {
+            const statusBadge = record.status === 'success' ?
+                `<span class="badge badge-green">${record.status_code}</span>` :
+                record.status === 'failed' ?
+                `<span class="badge badge-red">Failed</span>` :
+                `<span class="badge badge-blue">Pending</span>`;
+
+            const elapsed = record.elapsed_ms ?
+                ` • ${record.elapsed_ms.toFixed(0)}ms` : '';
+
+            // Format JSON with indentation
+            const formatJson = (obj) => {
+                if (!obj) return 'N/A';
+                return JSON.stringify(obj, null, 2);
+            };
+
+            const requestJson = formatJson(record.request_body);
+            const responseJson = formatJson(record.response_body);
+
+            return `
+                <div class="bypass-record" id="bypass-record-${index}">
+                    <div class="bypass-record-header" onclick="toggleBypassRecord(${index})">
+                        <div class="flex items-center gap-2 flex-1">
+                            <span class="expand-icon">▶</span>
+                            <span class="text-xs text-gray-500">
+                                ${record.timestamp.toLocaleTimeString()}
+                            </span>
+                            <span class="text-xs text-gray-600">
+                                ${record.client_ip}
+                            </span>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                            <span class="text-xs text-gray-500">${elapsed}</span>
+                        </div>
+                    </div>
+                    <div class="bypass-record-details">
+                        <div class="bypass-record-content">
+                            <div class="mb-3">
+                                <div class="text-xs font-semibold text-gray-700 mb-1">目标地址:</div>
+                                <div class="text-xs text-gray-600 break-all">${record.target_url}</div>
+                            </div>
+
+                            ${record.request_body ? `
+                            <div class="mb-3">
+                                <div class="text-xs font-semibold text-gray-700 mb-1">请求体:</div>
+                                <div class="json-container">
+                                    <button
+                                        id="copy-bypass-req-${index}"
+                                        class="copy-btn"
+                                        data-copy="${requestJson.replace(/"/g, '&quot;')}"
+                                        onclick="event.stopPropagation(); copyToClipboard('copy-bypass-req-${index}')">
+                                        📋 复制
+                                    </button>
+                                    <div class="bypass-record-json">${requestJson}</div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            ${record.response_body ? `
+                            <div class="mb-3">
+                                <div class="text-xs font-semibold text-gray-700 mb-1">响应体:</div>
+                                <div class="json-container">
+                                    <button
+                                        id="copy-bypass-res-${index}"
+                                        class="copy-btn"
+                                        data-copy="${responseJson.replace(/"/g, '&quot;')}"
+                                        onclick="event.stopPropagation(); copyToClipboard('copy-bypass-res-${index}')">
+                                        📋 复制
+                                    </button>
+                                    <div class="bypass-record-json">${responseJson}</div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            ${record.error ? `
+                            <div class="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                <strong>错误:</strong> ${record.error}
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleBypassRecord(index) {
+        const record = document.getElementById(`bypass-record-${index}`);
+        if (record) {
+            record.classList.toggle('expanded');
+        }
+    }
+
+    function copyToClipboard(elementId) {
+        const btn = document.getElementById(elementId);
+        const text = btn.getAttribute('data-copy');
+
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✓ 已复制';
+            btn.style.background = '#10b981';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }).catch(err => {
+            showToast('复制失败: ' + err.message, 'error');
+        });
+    }
+
+    function toggleManualRecord(index) {
+        const record = document.getElementById(`manual-record-${index}`);
+        if (record) {
+            record.classList.toggle('expanded');
+        }
+    }
+
+    // Initialize on load
+    refreshIPList();
+    loadBypassConfig();
+</script>
+</body>
+</html>
