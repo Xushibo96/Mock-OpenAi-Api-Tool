@@ -1,21 +1,991 @@
 <!DOCTYPE html>
-<html lang="ch">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>FAKE OpenAi Api Server</title>
     <link rel="icon" href="/frontend/favicon_io/favicon.ico" type="image/x-icon">
     <link rel="icon" sizes="192x192" href="/frontend/favicon_io/android-chrome-192x192.png" type="image/png">
     <link rel="icon" sizes="512x512" href="/frontend/favicon_io/android-chrome-512x512.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #eef3fb;
+            --bg-soft: #f7f9fd;
+            --panel: rgba(255, 255, 255, 0.72);
+            --panel-strong: rgba(255, 255, 255, 0.84);
+            --panel-muted: rgba(255, 255, 255, 0.58);
+            --line: rgba(15, 23, 42, 0.08);
+            --line-strong: rgba(15, 23, 42, 0.14);
+            --text: #162033;
+            --text-soft: rgba(22, 32, 51, 0.72);
+            --text-faint: rgba(22, 32, 51, 0.48);
+            --accent: #0a84ff;
+            --accent-strong: #0067da;
+            --accent-soft: rgba(10, 132, 255, 0.1);
+            --green: #27ae60;
+            --red: #e2544a;
+            --blue: #0a84ff;
+            --shadow: 0 18px 42px rgba(106, 129, 167, 0.14);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
+
         * {
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
-            font-family: sans-serif;
-            background-color: #f3f4f6;
-            height: 100vh;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: "IBM Plex Sans", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(141, 184, 255, 0.35), transparent 24%),
+                radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.85), transparent 18%),
+                linear-gradient(180deg, #f7f9fd 0%, #eef3fb 55%, #e9eff8 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.3;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.26) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.26) 1px, transparent 1px);
+            background-size: 26px 26px;
+            mask-image: linear-gradient(180deg, black 0%, rgba(0, 0, 0, 0.2) 80%, transparent 100%);
+        }
+
+        .app-shell {
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .app-frame {
+            position: relative;
+            min-height: calc(100vh - 32px);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(248, 250, 255, 0.72));
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(28px) saturate(1.1);
+        }
+
+        .app-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 20%, transparent 74%, rgba(10, 132, 255, 0.04));
+        }
+
+        .app-header {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56));
+            backdrop-filter: blur(20px);
+        }
+
+        .header-strip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: rgba(10, 132, 255, 0.88);
+            flex: 0 0 auto;
+        }
+
+        .header-copy {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-soft);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-mini-stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .mini-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--text-faint);
+            white-space: nowrap;
+        }
+
+        .dashboard {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(340px, 0.94fr) minmax(460px, 1.06fr);
+            min-height: calc(100vh - 56px);
+        }
+
+        .column {
+            padding: 16px 18px 18px;
+            min-width: 0;
+        }
+
+        .column-left {
+            border-right: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+        }
+
+        .section-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .section-title {
+            margin: 0 0 4px;
+            font-size: 0.98rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .section-copy {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-soft);
+        }
+
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel {
+            position: relative;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            background: var(--panel);
+            box-shadow: 0 10px 24px rgba(132, 152, 184, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.66);
+            overflow: hidden;
+            backdrop-filter: blur(22px);
+        }
+
+        .panel::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.58), transparent 22%);
+        }
+
+        .panel-head {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px 12px;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .panel-title {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .panel-subtitle {
+            margin: 4px 0 0;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-soft);
+        }
+
+        .panel-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(10, 132, 255, 0.8);
+            white-space: nowrap;
+        }
+
+        .panel-body {
+            position: relative;
+            z-index: 1;
+            padding: 14px 16px 16px;
+        }
+
+        .request-card {
+            min-height: 220px;
+            border: 1px dashed rgba(15, 23, 42, 0.1);
+            border-radius: 16px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(248, 250, 255, 0.72)),
+                radial-gradient(circle at top right, rgba(10, 132, 255, 0.08), transparent 42%);
+            padding: 14px;
+        }
+
+        .muted-placeholder {
+            display: flex;
+            min-height: 168px;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-faint);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .history-list {
+            max-height: 52vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .editor-column {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .tabs {
+            display: inline-grid;
+            grid-template-columns: repeat(3, minmax(150px, max-content));
+            gap: 4px;
+            padding: 3px;
+            margin-bottom: 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.56);
+            backdrop-filter: blur(20px);
+            align-self: center;
+            width: auto;
+            max-width: 100%;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            padding: 3px 18px;
+            border-radius: 999px;
+            cursor: pointer;
+            color: var(--text-soft);
+            font-size: 13px;
+            font-weight: 500;
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.74);
+        }
+
+        .tab.active {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 247, 255, 0.9));
+            color: var(--accent);
+            box-shadow: 0 6px 16px rgba(124, 142, 173, 0.12);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .editor-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 100%;
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            background: var(--panel-strong);
+            box-shadow: 0 14px 34px rgba(132, 152, 184, 0.1);
+            backdrop-filter: blur(24px);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .editor-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .editor-copy {
+            margin: 2px 0 0;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-soft);
+        }
+
+        .editor-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .meta-card {
+            padding: 9px 11px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.62);
+        }
+
+        .meta-label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 10px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .meta-value {
+            font-size: 12px;
+            line-height: 1.35;
+            color: var(--text-soft);
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-span-3 {
+            grid-column: span 3;
+        }
+
+        .field-span-4 {
+            grid-column: span 4;
+        }
+
+        .field-span-6 {
+            grid-column: span 6;
+        }
+
+        .field-span-8 {
+            grid-column: span 8;
+        }
+
+        .field-span-9 {
+            grid-column: span 9;
+        }
+
+        .field-span-12 {
+            grid-column: span 12;
+        }
+
+        .field-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .inline-row,
+        .toolbar-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .button-group-horizontal {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(170px, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        .button-group-horizontal .btn {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .toolbar-row .btn {
+            flex: 0 1 auto;
+            min-width: 132px;
+        }
+
+        .queue-actions .btn {
+            flex: 1 1 150px;
+        }
+
+        .queue-response-row {
+            display: grid;
+            grid-template-columns: 88px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+        }
+
+        .queue-response-row .field-label {
+            padding-top: 10px;
+            margin: 0;
+        }
+
+        .queue-response-row .compact-textarea {
+            min-height: 112px;
+        }
+
+        .queue-workbench {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .queue-stage {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.62);
+            box-shadow: 0 8px 20px rgba(132, 152, 184, 0.08);
+            overflow: hidden;
+        }
+
+        .queue-stage-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px 8px;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .queue-stage-title {
+            margin: 0;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .queue-stage-copy {
+            margin: 3px 0 0;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-soft);
+        }
+
+        .queue-stage-body {
+            padding: 12px;
+        }
+
+        .queue-ip-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .queue-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            border-radius: 12px;
+            background: rgba(250, 252, 255, 0.84);
+        }
+
+        .queue-summary-label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .queue-summary-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .queue-composer {
+            display: grid;
+            grid-template-columns: 128px minmax(0, 1fr);
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .queue-status-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            border-radius: 12px;
+            background: rgba(250, 252, 255, 0.84);
+        }
+
+        .queue-status-card .input {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            min-height: 64px;
+        }
+
+        .queue-editor-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            border-radius: 12px;
+            background: rgba(250, 252, 255, 0.84);
+        }
+
+        .queue-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .queue-actions-grid .btn {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .queue-actions-grid .btn-wide {
+            grid-column: span 2;
+        }
+
+        .input,
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--text);
+            font: inherit;
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            outline: none;
+        }
+
+        .input,
+        select {
+            min-height: 40px;
+            padding: 9px 12px;
+        }
+
+        textarea {
+            min-height: 180px;
+            padding: 12px 14px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .input:hover,
+        select:hover,
+        textarea:hover {
+            border-color: rgba(15, 23, 42, 0.16);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: rgba(10, 132, 255, 0.36);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.12);
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        textarea::placeholder,
+        .input::placeholder {
+            color: rgba(22, 32, 51, 0.34);
+        }
+
+        .font-mono,
+        pre,
+        .bypass-record-json {
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        .editor-textarea {
+            min-height: 300px;
+        }
+
+        .compact-textarea {
+            min-height: 130px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 8px 14px;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+            box-shadow: 0 12px 26px rgba(10, 132, 255, 0.22);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(10, 132, 255, 0.26);
+        }
+
+        .btn-light {
+            background: rgba(255, 255, 255, 0.74);
+            color: var(--text);
+            border-color: var(--line);
+            box-shadow: 0 8px 20px rgba(132, 152, 184, 0.08);
+        }
+
+        .btn-light:hover {
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 10px 24px rgba(132, 152, 184, 0.12);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, rgba(226, 84, 74, 0.96), rgba(200, 62, 53, 0.96));
+            color: #fffefe;
+            box-shadow: 0 12px 26px rgba(226, 84, 74, 0.18);
+        }
+
+        .btn-sm {
+            min-height: 34px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .send-button {
+            min-width: 168px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .disabled {
+            opacity: 0.45;
+            pointer-events: none;
+            filter: grayscale(0.2);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+        }
+
+        .badge-blue {
+            background: rgba(10, 132, 255, 0.1);
+            border-color: rgba(10, 132, 255, 0.14);
+            color: var(--blue);
+        }
+
+        .badge-green {
+            background: rgba(39, 174, 96, 0.1);
+            border-color: rgba(39, 174, 96, 0.16);
+            color: var(--green);
+        }
+
+        .badge-red {
+            background: rgba(226, 84, 74, 0.1);
+            border-color: rgba(226, 84, 74, 0.16);
+            color: var(--red);
+        }
+
+        .queue-item,
+        .bypass-record {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 14px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+            box-shadow: 0 10px 24px rgba(132, 152, 184, 0.08);
+        }
+
+        .queue-item:hover,
+        .bypass-record:hover {
+            transform: translateY(-1px);
+            border-color: var(--line-strong);
+            background: rgba(255, 255, 255, 0.86);
+        }
+
+        .queue-item {
+            padding: 12px;
+        }
+
+        .bypass-record-header {
+            padding: 12px 14px;
+            cursor: pointer;
+            user-select: none;
+            min-height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .bypass-record-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.32s ease;
+            border-top: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .bypass-record.expanded .bypass-record-details {
+            max-height: 700px;
+        }
+
+        .bypass-record-content {
+            padding: 12px;
+            background: rgba(248, 250, 255, 0.72);
+        }
+
+        .bypass-record-json,
+        pre {
+            margin: 0;
+            padding: 12px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 12px;
+            background: rgba(245, 248, 255, 0.96);
+            color: #22314a;
+            font-size: 11px;
+            line-height: 1.65;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .bypass-record-json {
+            padding-top: 38px;
+            max-height: 220px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .json-container {
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            min-height: 28px;
+            padding: 5px 8px;
+            border: 1px solid rgba(10, 132, 255, 0.12);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.88);
+            color: var(--accent);
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+        }
+
+        .bypass-config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+
+        .form-input .input {
+            width: 100%;
+        }
+
+        .expand-icon {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            font-size: 10px;
+        }
+
+        .bypass-record.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            border-radius: 999px;
+            background: rgba(210, 220, 236, 0.9);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            transition: 0.3s ease;
+        }
+
+        .slider:before {
+            content: "";
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            border-radius: 50%;
+            background: #ffffff;
+            transition: 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 124, 158, 0.22);
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, rgba(10, 132, 255, 0.86), rgba(0, 103, 218, 0.92));
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            max-width: min(360px, calc(100vw - 32px));
+            padding: 10px 14px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.92);
+            color: var(--text);
+            box-shadow: 0 12px 28px rgba(106, 129, 167, 0.14);
+            backdrop-filter: blur(18px);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .file-input {
+            display: none;
         }
 
         .flex {
@@ -26,60 +996,25 @@
             flex-direction: column;
         }
 
-        .h-full {
-            height: 100%;
+        .flex-1 {
+            flex: 1;
+            min-height: 0;
         }
 
-        .w-half {
-            width: 50%;
+        .items-center {
+            align-items: center;
         }
 
-        .border-r {
-            border-right: 1px solid #ccc;
+        .gap-2 {
+            gap: 0.5rem;
         }
 
-        .border {
-            border: 1px solid #ddd;
-        }
-
-        .p-4 {
-            padding: 16px;
-        }
-
-        .p-2 {
-            padding: 8px;
-        }
-
-        .rounded {
-            border-radius: 6px;
-        }
-
-        .mb-4 {
-            margin-bottom: 1rem;
-        }
-
-        .mb-2 {
-            margin-bottom: 0.5rem;
-        }
-
-        .mt-2 {
+        .space-y-2 > * + * {
             margin-top: 0.5rem;
         }
 
-        .mt-6 {
-            margin-top: 1.5rem;
-        }
-
-        .shadow-sm {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .bg-white {
-            background: #fff;
-        }
-
-        .bg-gray-50 {
-            background: #f9fafb;
+        .overflow-y-auto {
+            overflow-y: auto;
         }
 
         .text-sm {
@@ -91,31 +1026,27 @@
         }
 
         .text-gray-400 {
-            color: #9ca3af;
+            color: var(--text-faint);
         }
 
-        .text-gray-500 {
-            color: #6b7280;
-        }
-
-        .text-gray-700 {
-            color: #374151;
-        }
-
+        .text-gray-500,
+        .text-gray-600,
+        .text-gray-700,
         .text-gray-800 {
-            color: #1f2937;
+            color: var(--text-soft);
         }
 
         .text-blue {
-            color: #1d4ed8;
+            color: var(--blue);
         }
 
         .text-green {
-            color: #059669;
+            color: var(--green);
         }
 
-        .text-red {
-            color: #dc2626;
+        .text-red,
+        .text-red-600 {
+            color: var(--red);
         }
 
         .font-semibold {
@@ -126,423 +1057,297 @@
             font-weight: 500;
         }
 
-        .cursor-pointer {
-            cursor: pointer;
+        .p-2 {
+            padding: 8px;
         }
 
-        .hover-bg {
-            transition: background-color 0.2s ease;
+        .p-3 {
+            padding: 12px;
         }
 
-        .hover-bg:hover {
-            background-color: #f3f4f6;
+        .p-4 {
+            padding: 16px;
         }
 
-        .input, select {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 6px 8px;
-            font-size: 14px;
+        .rounded {
+            border-radius: 12px;
         }
 
-        textarea {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 6px 8px;
-            font-size: 14px;
-            width: 100%;
-            box-sizing: border-box;
+        .border {
+            border: 1px solid var(--line);
+        }
+
+        .bg-white,
+        .bg-gray-50,
+        .bg-red-50 {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .shadow-sm {
+            box-shadow: 0 10px 24px rgba(132, 152, 184, 0.1);
+        }
+
+        .mb-1 {
+            margin-bottom: 4px;
+        }
+
+        .mb-2 {
+            margin-bottom: 8px;
+        }
+
+        .mb-3 {
+            margin-bottom: 12px;
+        }
+
+        .mb-4 {
+            margin-bottom: 16px;
+        }
+
+        .mt-2 {
+            margin-top: 8px;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        .mt-6 {
+            margin-top: 24px;
+        }
+
+        .ml-2 {
+            margin-left: 8px;
+        }
+
+        .ml-3 {
+            margin-left: 12px;
+        }
+
+        .mr-2 {
+            margin-right: 8px;
+        }
+
+        .mr-3 {
+            margin-right: 12px;
         }
 
         .w-24 {
-            width: 6rem;
+            width: 96px;
         }
 
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            background-color: #3b82f6;
-            color: white;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
+        .break-all {
+            word-break: break-all;
         }
 
-        .btn:hover {
-            background-color: #2563eb;
-        }
-
-        .btn-light {
-            background-color: #e0f2fe;
-            color: #0284c7;
-        }
-
-        .btn-light:hover {
-            background-color: #bae6fd;
-        }
-
-        .btn-danger {
-            background-color: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #dc2626;
-        }
-
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        .send-button {
-            width: 150px;
-        }
-
-        .button-container {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #323232;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 1000;
-            pointer-events: none;
-        }
-
-        .toast.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        pre {
-            background: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-
-        /* Tab styles */
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e5e7eb;
-            margin-bottom: 1rem;
-        }
-
-        .tab {
-            padding: 8px 16px;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            color: #6b7280;
-        }
-
-        .tab.active {
-            border-bottom-color: #3b82f6;
-            color: #3b82f6;
-            font-weight: 600;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .queue-item {
-            border: 1px solid #e5e7eb;
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 4px;
-            background: white;
-        }
-
-        .queue-item:hover {
-            background: #f9fafb;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .badge-blue {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .badge-green {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .badge-red {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        /* Bypass history expandable card styles */
-        .bypass-record {
-            border: 1px solid #e5e7eb;
-            background: white;
-            border-radius: 6px;
-            margin-bottom: 8px;
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
             overflow: hidden;
-            transition: all 0.2s;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
-        .bypass-record:hover {
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        @media (max-width: 1180px) {
+            .app-shell {
+                padding: 10px;
+            }
+
+            .app-frame {
+                min-height: calc(100vh - 20px);
+            }
+
+            .app-header,
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .app-header {
+                display: grid;
+                padding: 10px 12px;
+            }
+
+            .header-copy {
+                white-space: normal;
+            }
+
+            .column-left {
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
         }
 
-        .bypass-record-header {
-            padding: 12px;
-            cursor: pointer;
-            user-select: none;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-        }
+        @media (max-width: 760px) {
+            .app-shell {
+                padding: 6px;
+            }
 
-        .bypass-record-header:hover {
-            background: #f9fafb;
-        }
+            .app-header,
+            .column {
+                padding: 10px 12px;
+            }
 
-        .bypass-record-details {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-            border-top: 1px solid #e5e7eb;
-        }
+            .tabs {
+                grid-template-columns: 1fr;
+                border-radius: 24px;
+            }
 
-        .bypass-record.expanded .bypass-record-details {
-            max-height: 500px;
-        }
+            .editor-meta,
+            .field-grid,
+            .form-row {
+                grid-template-columns: 1fr;
+            }
 
-        .bypass-record-content {
-            padding: 12px;
-            background: #f9fafb;
-        }
+            .field-span-3,
+            .field-span-4,
+            .field-span-6,
+            .field-span-8,
+            .field-span-12 {
+                grid-column: span 1;
+            }
 
-        .bypass-record-json {
-            background: #1f2937;
-            color: #e5e7eb;
-            padding: 8px;
-            padding-top: 32px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            max-height: 200px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            line-height: 1.4;
-            position: relative;
-        }
+            .button-group-horizontal {
+                grid-template-columns: 1fr;
+            }
 
-        .json-container {
-            position: relative;
-        }
+            .queue-response-row {
+                grid-template-columns: 1fr;
+            }
 
-        .copy-btn {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            padding: 4px 8px;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            z-index: 10;
-            transition: background 0.2s;
-        }
+            .queue-response-row .field-label {
+                padding-top: 0;
+            }
 
-        .copy-btn:hover {
-            background: #2563eb;
-        }
+            .queue-ip-grid,
+            .queue-composer,
+            .queue-actions-grid,
+            .queue-summary {
+                grid-template-columns: 1fr;
+            }
 
-        /* Bypass config form styles */
-        .bypass-config-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+            .queue-actions-grid .btn-wide {
+                grid-column: span 1;
+            }
 
-        .form-row {
-            display: grid;
-            grid-template-columns: 120px 1fr;
-            gap: 12px;
-            align-items: center;
-        }
+            .panel-head,
+            .bypass-record-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
 
-        .form-label {
-            text-align: left;
-            font-size: 13px;
-            font-weight: 500;
-            color: #374151;
-        }
+            .button-container {
+                justify-content: stretch;
+            }
 
-        .form-input {
-            text-align: right;
-        }
-
-        .form-input .input {
-            width: 100%;
-            text-align: left;
-        }
-
-        .expand-icon {
-            display: inline-block;
-            transition: transform 0.3s;
-            margin-right: 4px;
-            font-size: 10px;
-        }
-
-        .bypass-record.expanded .expand-icon {
-            transform: rotate(90deg);
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .overflow-y-auto {
-            overflow-y: auto;
-        }
-
-        .flex-1 {
-            flex: 1;
-        }
-
-        .space-y-2 > * + * {
-            margin-top: 0.5rem;
-        }
-
-        /* Switch toggle styles */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: 0.3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #2563eb;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(20px);
-        }
-
-        .items-center {
-            align-items: center;
-        }
-
-        .gap-2 {
-            gap: 0.5rem;
+            .send-button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
 <body>
-<div class="flex h-full">
-    <!-- Left Panel -->
-    <div class="w-half border-r p-4 bg-white overflow-y-auto" id="request-panel">
-        <div id="completed-section" class="mt-6">
-            <h3 class="text-sm font-semibold text-green mb-2">
-                ✅ 已处理的请求
-            </h3>
-            <div id="completed-list" class="space-y-2 text-sm text-gray-700"></div>
-        </div>
-        <h2 class="text-sm font-semibold mb-4 text-blue">
-            📥 当前请求
-        </h2>
-        <div id="request-display" class="text-sm text-gray-800">
-            <p class="text-gray-400">🔄 等待请求中...</p>
-        </div>
-    </div>
+<div class="app-shell">
+    <div class="app-frame">
+        <header class="app-header">
+            <div class="header-strip">
+                <span class="hero-kicker">Mock Response Console</span>
+                <p class="header-copy">支持手动回包、IP 队列预设和 Bypass 转发，适合接口调试、流程回放和异常模拟。</p>
+            </div>
+            <div class="header-mini-stats">
+                <span class="mini-stat">Manual Reply</span>
+                <span class="mini-stat">Preset Queue</span>
+                <span class="mini-stat">Bypass Mode</span>
+            </div>
+        </header>
 
-    <!-- Right Panel with Tabs -->
-    <div class="w-half p-4 flex flex-col bg-gray-50">
-        <!-- Tabs -->
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('manual')">
-                ↩️ 手动响应
-            </div>
-            <div class="tab" onclick="switchTab('queue')">
-                📋 预设队列
-            </div>
-            <div class="tab" onclick="switchTab('bypass')">
-                🔀 Bypass Mode
-            </div>
-        </div>
+        <main class="dashboard">
+            <section class="column column-left">
+                <div class="stack">
+                    <div>
+                        <div class="section-label">Live Traffic</div>
+                        <h2 class="section-title">请求观测</h2>
+                        <p class="section-copy">当前待处理请求和已完成历史被拆分为两个独立信息区，便于快速判断上下文。</p>
+                    </div>
 
-        <!-- Manual Response Tab -->
-        <div id="manual-tab" class="tab-content active flex flex-col flex-1">
-            <div class="mb-3">
-                <label class="text-sm">设置响应码</label>
-                <input id="status-code" type="number" value="200" class="input w-24 ml-2"/>
-            </div>
-            <div class="mt-2">
-                <button class="btn-light btn mr-2" onclick="loadTemplate(1)">🧩 标签描述模板</button>
-                <button class="btn-light btn" onclick="loadTemplate(2)">🧩 分类结果模板</button>
-            </div>
-            <p class="text-sm mb-2 mt-2">响应体</p>
-            <textarea id="response-body" class="input font-mono flex-1 mb-4 bg-white text-sm" rows="40" spellcheck="false">
+                    <div class="panel">
+                        <div class="panel-head">
+                            <div>
+                                <h3 class="panel-title">当前请求</h3>
+                                <p class="panel-subtitle">当新的 WebSocket 请求进入时，这里会展示来源、路径和请求体。</p>
+                            </div>
+                            <div class="panel-badge">WS Stream</div>
+                        </div>
+                        <div class="panel-body">
+                            <div id="request-panel">
+                                <div id="request-display" class="request-card text-sm text-gray-800">
+                                    <div class="muted-placeholder">等待请求进入<br/>收到后可在右侧直接处理</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">
+                            <div>
+                                <h3 class="panel-title">已处理请求</h3>
+                                <p class="panel-subtitle">保留最近的人工响应历史，支持展开查看请求体与响应体。</p>
+                            </div>
+                            <div class="panel-badge">Audit Trail</div>
+                        </div>
+                        <div class="panel-body">
+                            <div id="completed-section">
+                                <div id="completed-list" class="history-list space-y-2 text-sm text-gray-700"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="column editor-column">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('manual')">↩️ 手动响应</div>
+                    <div class="tab" onclick="switchTab('queue')">📋 预设队列</div>
+                    <div class="tab" onclick="switchTab('bypass')">🔀 Bypass Mode</div>
+                </div>
+
+                <div id="manual-tab" class="tab-content active flex-col flex-1">
+                    <div class="editor-shell flex-1">
+                        <div>
+                            <div class="eyebrow">Manual Composer</div>
+                            <h2 class="editor-title">构造并发送单次响应</h2>
+                            <p class="editor-copy">编辑状态码和响应 JSON，适合调试接口返回、快速模拟异常或覆盖临时数据。</p>
+                        </div>
+
+                        <div class="editor-meta">
+                            <div class="meta-card">
+                                <span class="meta-label">使用建议</span>
+                                <div class="meta-value">先在左侧确认请求内容，再决定回包结构，避免误回错误格式。</div>
+                            </div>
+                            <div class="meta-card">
+                                <span class="meta-label">模板捷径</span>
+                                <div class="meta-value">内置两种常用模板，可作为分类、标签等场景的快速起点。</div>
+                            </div>
+                        </div>
+
+                        <div class="field-grid">
+                            <div class="field field-span-3">
+                                <label class="field-label" for="status-code">状态码</label>
+                                <input id="status-code" type="number" value="200" class="input"/>
+                            </div>
+                            <div class="field field-span-9">
+                                <label class="field-label">快速模板</label>
+                                <div class="button-group-horizontal">
+                                    <button class="btn-light btn" onclick="loadTemplate(1)">🧩 标签描述模板</button>
+                                    <button class="btn-light btn" onclick="loadTemplate(2)">🧩 分类结果模板</button>
+                                </div>
+                            </div>
+                            <div class="field field-span-12">
+                                <label class="field-label" for="response-body">响应体</label>
+                                <textarea id="response-body" class="input font-mono editor-textarea text-sm" spellcheck="false">
 {
   "id": "test_id",
   "object": "chat.completion",
@@ -570,148 +1375,234 @@
   },
   "prompt_logprobs": null
 }</textarea>
-            <div class="button-container">
-                <button onclick="sendResponse()" id="send-button" class="btn send-button">
-                    📤 Send Response
-                </button>
-            </div>
-        </div>
+                            </div>
+                        </div>
 
-        <!-- Queue Management Tab -->
-        <div id="queue-tab" class="tab-content flex flex-col flex-1">
-            <!-- IP Selection -->
-            <div class="mb-3">
-                <label class="text-sm font-semibold">选择IP队列</label>
-                <select id="queue-ip-select" class="input ml-2" onchange="loadQueueForIP()">
-                    <option value="">-- 选择IP或输入新IP --</option>
-                </select>
-                <input id="new-ip-input" type="text" placeholder="或输入新IP地址" class="input ml-2" style="width: 200px;"/>
-            </div>
-
-            <!-- Queue Info -->
-            <div class="mb-3 p-2 bg-white rounded border">
-                <span class="text-sm">当前队列: <strong id="current-queue-ip">-</strong></span>
-                <span class="badge badge-blue ml-2" id="queue-length">0 items</span>
-            </div>
-
-            <!-- Add Response -->
-            <div class="mb-3">
-                <div class="flex mb-2">
-                    <input id="queue-status-code" type="number" value="200" class="input w-24" placeholder="Status"/>
-                    <button onclick="addToQueue()" class="btn ml-2">➕ 添加到队列</button>
-                    <button onclick="clearCurrentQueue()" class="btn-danger btn ml-2">🗑️ 清空队列</button>
+                        <div class="button-container">
+                            <button onclick="sendResponse()" id="send-button" class="btn send-button">
+                                📤 Send Response
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <textarea id="queue-response-body" class="input font-mono bg-white text-sm" rows="8" spellcheck="false" placeholder="输入响应JSON...">
+
+                <div id="queue-tab" class="tab-content flex-col flex-1">
+                    <div class="editor-shell flex-1">
+                        <div>
+                            <div class="eyebrow">Queue Library</div>
+                            <h2 class="editor-title">管理 IP 响应队列</h2>
+                            <p class="editor-copy">按来源 IP 维护有序响应集，适合回放多步流程、场景测试和批量预设。</p>
+                        </div>
+
+                        <div class="queue-workbench">
+                            <section class="queue-stage">
+                                <div class="queue-stage-head">
+                                    <div>
+                                        <h3 class="queue-stage-title">Queue Source</h3>
+                                        <p class="queue-stage-copy">先选择一个已有 IP，或者输入新的来源地址来创建独立队列。</p>
+                                    </div>
+                                </div>
+                                <div class="queue-stage-body">
+                                    <div class="queue-ip-grid">
+                                        <div class="field">
+                                            <label class="field-label" for="queue-ip-select">选择已有 IP</label>
+                                            <select id="queue-ip-select" class="input" onchange="loadQueueForIP()">
+                                                <option value="">-- 选择IP或输入新IP --</option>
+                                            </select>
+                                        </div>
+                                        <div class="field">
+                                            <label class="field-label" for="new-ip-input">或创建新 IP</label>
+                                            <input id="new-ip-input" type="text" placeholder="输入新的 IP 地址" class="input"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="queue-stage">
+                                <div class="queue-stage-head">
+                                    <div>
+                                        <h3 class="queue-stage-title">Queue Snapshot</h3>
+                                        <p class="queue-stage-copy">当前编辑的队列和条目数量会在这里保持可见，避免误操作到错误来源。</p>
+                                    </div>
+                                </div>
+                                <div class="queue-stage-body">
+                                    <div class="queue-summary">
+                                        <div>
+                                            <span class="queue-summary-label">当前队列</span>
+                                            <div class="queue-summary-value"><strong id="current-queue-ip">-</strong></div>
+                                        </div>
+                                        <span class="badge badge-blue" id="queue-length">0 items</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="queue-stage">
+                                <div class="queue-stage-head">
+                                    <div>
+                                        <h3 class="queue-stage-title">Response Composer</h3>
+                                        <p class="queue-stage-copy">左侧设置状态码，右侧编辑响应 JSON，然后直接加入当前队列。</p>
+                                    </div>
+                                </div>
+                                <div class="queue-stage-body">
+                                    <div class="queue-composer">
+                                        <div class="queue-status-card">
+                                            <label class="field-label" for="queue-status-code">状态码</label>
+                                            <input id="queue-status-code" type="number" value="200" class="input" placeholder="Status"/>
+                                        </div>
+                                        <div class="queue-editor-card">
+                                            <label class="field-label" for="queue-response-body">队列响应体</label>
+                                            <textarea id="queue-response-body" class="input font-mono compact-textarea text-sm" spellcheck="false" placeholder="输入响应JSON...">
 {
   "id": "preset-1",
   "message": "This is a preset response"
 }</textarea>
-            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
 
-            <!-- Import/Export -->
-            <div class="mb-3 flex">
-                <button onclick="document.getElementById('import-file').click()" class="btn-light btn mr-2">
-                    📥 导入JSON
-                </button>
-                <input type="file" id="import-file" class="file-input" accept=".json" onchange="importQueue()"/>
-                <button onclick="exportQueue()" class="btn-light btn mr-2">📤 导出队列</button>
-                <button onclick="exportAllQueues()" class="btn-light btn">📦 导出所有队列</button>
-            </div>
-
-            <!-- Queue List -->
-            <div class="flex-1 overflow-y-auto">
-                <h3 class="text-sm font-semibold mb-2">队列预览</h3>
-                <div id="queue-items-list" class="text-sm">
-                    <p class="text-gray-400">选择IP查看队列内容...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bypass Mode Tab -->
-        <div id="bypass-tab" class="tab-content flex flex-col flex-1">
-            <!-- Bypass Status -->
-            <div class="mb-4 p-3 bg-white rounded border">
-                <div class="flex items-center mb-2">
-                    <span class="text-sm font-semibold mr-3">Bypass 模式</span>
-                    <label class="switch">
-                        <input type="checkbox" id="bypass-enabled" onchange="toggleBypass()">
-                        <span class="slider"></span>
-                    </label>
-                    <span id="bypass-status-text" class="ml-3 text-sm text-gray-500">禁用</span>
-                </div>
-            </div>
-
-            <!-- Configuration Form -->
-            <div class="mb-4 p-3 bg-white rounded border">
-                <h3 class="text-sm font-semibold mb-3">转发配置</h3>
-
-                <div class="bypass-config-form">
-                    <!-- HTTPS Checkbox -->
-                    <div class="form-row">
-                        <label class="form-label">使用 HTTPS</label>
-                        <div class="form-input">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="bypass-https" class="mr-2" />
-                                <span class="text-xs text-gray-500">启用 SSL/TLS 加密连接</span>
-                            </label>
+                            <section class="queue-stage">
+                                <div class="queue-stage-head">
+                                    <div>
+                                        <h3 class="queue-stage-title">Queue Actions</h3>
+                                        <p class="queue-stage-copy">常用动作按优先级分组，主要操作放在前排，导入导出放在后排。</p>
+                                    </div>
+                                </div>
+                                <div class="queue-stage-body">
+                                    <div class="queue-actions-grid">
+                                        <button onclick="addToQueue()" class="btn btn-wide">➕ 添加到队列</button>
+                                        <button onclick="clearCurrentQueue()" class="btn-danger btn btn-wide">🗑️ 清空队列</button>
+                                        <button onclick="document.getElementById('import-file').click()" class="btn-light btn">📥 导入JSON</button>
+                                        <input type="file" id="import-file" class="file-input" accept=".json" onchange="importQueue()"/>
+                                        <button onclick="exportQueue()" class="btn-light btn">📤 导出队列</button>
+                                        <button onclick="exportAllQueues()" class="btn-light btn btn-wide">📦 导出所有队列</button>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
-                    </div>
 
-                    <!-- Target Host -->
-                    <div class="form-row">
-                        <label class="form-label">目标主机</label>
-                        <div class="form-input">
-                            <input id="bypass-host" type="text" class="input" placeholder="api.openai.com" />
-                        </div>
-                    </div>
-
-                    <!-- Port -->
-                    <div class="form-row">
-                        <label class="form-label">端口</label>
-                        <div class="form-input">
-                            <input id="bypass-port" type="number" class="input" placeholder="443" />
-                        </div>
-                    </div>
-
-                    <!-- URI -->
-                    <div class="form-row">
-                        <label class="form-label">请求路径</label>
-                        <div class="form-input">
-                            <input id="bypass-uri" type="text" class="input" placeholder="/v1/chat/completions" />
-                        </div>
-                    </div>
-
-                    <!-- API Key -->
-                    <div class="form-row">
-                        <label class="form-label">API Key</label>
-                        <div class="form-input">
-                            <input id="bypass-apikey" type="password" class="input" placeholder="sk-... (可选)" />
-                        </div>
-                    </div>
-
-                    <!-- Timeout -->
-                    <div class="form-row">
-                        <label class="form-label">超时时间 (秒)</label>
-                        <div class="form-input">
-                            <input id="bypass-timeout" type="number" class="input" placeholder="60" />
+                        <div class="panel" style="border-radius:24px;">
+                            <div class="panel-head">
+                                <div>
+                                    <h3 class="panel-title">队列预览</h3>
+                                    <p class="panel-subtitle">查看当前 IP 下的响应顺序，并支持逐条删除。</p>
+                                </div>
+                                <div class="panel-badge">Sequential Responses</div>
+                            </div>
+                            <div class="panel-body">
+                                <div id="queue-items-list" class="text-sm">
+                                    <p class="text-gray-400">选择IP查看队列内容...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex gap-2 mt-4">
-                    <button onclick="saveBypassConfig()" class="btn">💾 保存配置</button>
-                    <button onclick="loadBypassConfig()" class="btn-light">🔄 重新加载</button>
-                </div>
-            </div>
+                <div id="bypass-tab" class="tab-content flex-col flex-1">
+                    <div class="editor-shell flex-1">
+                        <div>
+                            <div class="eyebrow">Bypass Routing</div>
+                            <h2 class="editor-title">转发配置与链路记录</h2>
+                            <p class="editor-copy">当你需要将请求转发到真实服务时，在这里完成配置、启停和历史追踪。</p>
+                        </div>
 
-            <!-- Bypass Requests History -->
-            <div class="flex-1 overflow-y-auto">
-                <h3 class="text-sm font-semibold mb-2">转发记录</h3>
-                <div id="bypass-history" class="text-sm">
-                    <p class="text-gray-400">暂无转发记录...</p>
+                        <div class="panel" style="border-radius:24px;">
+                            <div class="panel-head">
+                                <div>
+                                    <h3 class="panel-title">Bypass 状态</h3>
+                                    <p class="panel-subtitle">开关控制是否绕过手动拦截，直接将请求转发到目标接口。</p>
+                                </div>
+                                <div class="inline-row">
+                                    <label class="switch">
+                                        <input type="checkbox" id="bypass-enabled" onchange="toggleBypass()">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span id="bypass-status-text" class="text-sm text-gray-500">禁用</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-radius:24px;">
+                            <div class="panel-head">
+                                <div>
+                                    <h3 class="panel-title">转发配置</h3>
+                                    <p class="panel-subtitle">指定目标主机、端口、路径和鉴权信息，保留原有接口调用逻辑。</p>
+                                </div>
+                                <div class="panel-badge">Forwarding Setup</div>
+                            </div>
+                            <div class="panel-body">
+                                <div class="bypass-config-form">
+                                    <div class="form-row">
+                                        <label class="form-label">使用 HTTPS</label>
+                                        <div class="form-input">
+                                            <label class="inline-row">
+                                                <input type="checkbox" id="bypass-https"/>
+                                                <span class="text-xs text-gray-500">启用 SSL/TLS 加密连接</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label class="form-label">目标主机</label>
+                                        <div class="form-input">
+                                            <input id="bypass-host" type="text" class="input" placeholder="api.openai.com"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label class="form-label">端口</label>
+                                        <div class="form-input">
+                                            <input id="bypass-port" type="number" class="input" placeholder="443"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label class="form-label">请求路径</label>
+                                        <div class="form-input">
+                                            <input id="bypass-uri" type="text" class="input" placeholder="/v1/chat/completions"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label class="form-label">API Key</label>
+                                        <div class="form-input">
+                                            <input id="bypass-apikey" type="password" class="input" placeholder="sk-... (可选)"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label class="form-label">超时时间 (秒)</label>
+                                        <div class="form-input">
+                                            <input id="bypass-timeout" type="number" class="input" placeholder="60"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="toolbar-row mt-4">
+                                    <button onclick="saveBypassConfig()" class="btn">💾 保存配置</button>
+                                    <button onclick="loadBypassConfig()" class="btn-light btn">🔄 重新加载</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-radius:24px;">
+                            <div class="panel-head">
+                                <div>
+                                    <h3 class="panel-title">转发记录</h3>
+                                    <p class="panel-subtitle">查看每次转发的目标地址、耗时、请求体和响应体。</p>
+                                </div>
+                                <div class="panel-badge">Request Ledger</div>
+                            </div>
+                            <div class="panel-body">
+                                <div id="bypass-history" class="text-sm">
+                                    <p class="text-gray-400">暂无转发记录...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 </div>
 
@@ -722,6 +1613,17 @@
     let currentRequestId = null;
     let currentQueueIP = null;
     let allQueues = {};
+    let bypassHistory = [];
+    let manualHistory = [];
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
     ws.onmessage = function (event) {
         const msg = JSON.parse(event.data);
@@ -733,7 +1635,6 @@
         } else if (msg.type === "completed_request") {
             renderCompletedRequest(msg.data);
         } else if (msg.type === "queue_updated") {
-            // Reload queue when updated
             if (msg.ip && currentQueueIP === msg.ip) {
                 loadQueueForIP();
             }
@@ -748,12 +1649,10 @@
         } else if (msg.type === "bypass_response") {
             handleBypassResponse(msg.data);
         } else if (msg.type === "bypass_config_updated") {
-            // Reload bypass config when updated
             loadBypassConfig();
         }
     };
 
-    // Tab switching
     function switchTab(tabName) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -772,15 +1671,32 @@
         }
     }
 
-    // Request rendering (existing code)
     function renderRequest(r) {
         document.getElementById("request-display").innerHTML = `
-        <div class="border p-3 rounded bg-gray-50 shadow-sm">
-          <p><strong>IP:</strong> ${r.ip}:${r.port}</p>
-          <p class="text-xs text-gray-500 mt-1">Path: ${r.path}</p>
-          <pre class="text-xs">${JSON.stringify(r.body, null, 2)}</pre>
+        <div>
+            <div class="inline-row mb-3" style="justify-content: space-between;">
+                <div class="inline-row">
+                    <span class="badge badge-blue">Live</span>
+                    <span class="badge badge-green">${escapeHtml(r.ip)}:${escapeHtml(r.port)}</span>
+                </div>
+                <span class="text-xs text-gray-500">${escapeHtml(r.path)}</span>
+            </div>
+            <div class="meta-card mb-3">
+                <span class="meta-label">Request Path</span>
+                <div class="meta-value break-all">${escapeHtml(r.path)}</div>
+            </div>
+            <div class="field">
+                <label class="field-label">请求体</label>
+                <pre class="text-xs">${escapeHtml(JSON.stringify(r.body, null, 2))}</pre>
+            </div>
         </div>
       `;
+    }
+
+    function resetRequestDisplay() {
+        document.getElementById("request-display").innerHTML = `
+            <div class="muted-placeholder">等待请求进入<br/>收到后可在右侧直接处理</div>
+        `;
     }
 
     function sendResponse() {
@@ -804,7 +1720,7 @@
         }));
         showToast("Response sent");
         currentRequestId = null;
-        document.getElementById("request-display").innerHTML = "<p class='text-gray-400'>🔄 Waiting for next request...</p>";
+        resetRequestDisplay();
         enableSend(false);
     }
 
@@ -878,7 +1794,9 @@
     function showToast(message, isError = false) {
         const toast = document.getElementById("toast");
         toast.textContent = message;
-        toast.style.backgroundColor = isError ? "#dc2626" : "#16a34a";
+        toast.style.backgroundColor = isError ? "rgba(255, 244, 243, 0.96)" : "rgba(246, 250, 255, 0.96)";
+        toast.style.borderColor = isError ? "rgba(226, 84, 74, 0.24)" : "rgba(10, 132, 255, 0.18)";
+        toast.style.color = isError ? "#9f2f27" : "#0f3f77";
         toast.classList.add("show");
         setTimeout(() => {
             toast.classList.remove("show");
@@ -886,7 +1804,6 @@
     }
 
     function renderCompletedRequest(data) {
-        // Store in history
         manualHistory.unshift({
             id: data.id || Date.now(),
             timestamp: new Date(),
@@ -897,7 +1814,6 @@
             response_body: data.response
         });
 
-        // Re-render the list
         renderManualHistory();
     }
 
@@ -915,7 +1831,6 @@
                 `<span class="badge badge-red">${record.status_code}</span>` :
                 `<span class="badge badge-blue">${record.status_code}</span>`;
 
-            // Format JSON with indentation
             const formatJson = (obj) => {
                 if (!obj) return 'N/A';
                 return JSON.stringify(obj, null, 2);
@@ -929,16 +1844,10 @@
                     <div class="bypass-record-header" onclick="toggleManualRecord(${index})">
                         <div class="flex items-center gap-2 flex-1">
                             <span class="expand-icon">▶</span>
-                            <span class="text-xs text-gray-500">
-                                ${record.timestamp.toLocaleTimeString()}
-                            </span>
-                            <span class="text-xs text-gray-600">
-                                ${record.ip}:${record.port}
-                            </span>
+                            <span class="text-xs text-gray-500">${record.timestamp.toLocaleTimeString()}</span>
+                            <span class="text-xs text-gray-600">${escapeHtml(record.ip)}:${escapeHtml(record.port)}</span>
                         </div>
-                        <div>
-                            ${statusBadge}
-                        </div>
+                        <div>${statusBadge}</div>
                     </div>
                     <div class="bypass-record-details">
                         <div class="bypass-record-content">
@@ -949,11 +1858,11 @@
                                     <button
                                         id="copy-req-${index}"
                                         class="copy-btn"
-                                        data-copy="${requestJson.replace(/"/g, '&quot;')}"
+                                        data-copy="${escapeHtml(requestJson)}"
                                         onclick="event.stopPropagation(); copyToClipboard('copy-req-${index}')">
                                         📋 复制
                                     </button>
-                                    <div class="bypass-record-json">${requestJson}</div>
+                                    <div class="bypass-record-json">${escapeHtml(requestJson)}</div>
                                 </div>
                             </div>
                             ` : ''}
@@ -965,11 +1874,11 @@
                                     <button
                                         id="copy-res-${index}"
                                         class="copy-btn"
-                                        data-copy="${responseJson.replace(/"/g, '&quot;')}"
+                                        data-copy="${escapeHtml(responseJson)}"
                                         onclick="event.stopPropagation(); copyToClipboard('copy-res-${index}')">
                                         📋 复制
                                     </button>
-                                    <div class="bypass-record-json">${responseJson}</div>
+                                    <div class="bypass-record-json">${escapeHtml(responseJson)}</div>
                                 </div>
                             </div>
                             ` : ''}
@@ -979,8 +1888,6 @@
             `;
         }).join('');
     }
-
-    // ========== Queue Management Functions ==========
 
     async function refreshIPList() {
         try {
@@ -1034,14 +1941,14 @@
             } else {
                 list.innerHTML = data.items.map((item, idx) => `
                     <div class="queue-item">
-                        <div class="flex" style="justify-content: space-between; align-items: center;">
-                            <div>
+                        <div class="flex" style="justify-content: space-between; align-items: center; gap: 12px;">
+                            <div class="inline-row">
                                 <span class="badge badge-blue">#${idx + 1}</span>
                                 <span class="badge ${item.status_code === 200 ? 'badge-green' : 'badge-red'}">${item.status_code}</span>
                             </div>
-                            <button onclick="deleteQueueItem('${ip}', '${item.id}')" class="btn-danger btn btn-sm">删除</button>
+                            <button onclick="deleteQueueItem('${escapeHtml(ip)}', '${escapeHtml(item.id)}')" class="btn-danger btn btn-sm">删除</button>
                         </div>
-                        <pre class="text-xs mt-2">${JSON.stringify(item.response, null, 2).substring(0, 200)}${JSON.stringify(item.response).length > 200 ? '...' : ''}</pre>
+                        <pre class="text-xs mt-2">${escapeHtml(JSON.stringify(item.response, null, 2).substring(0, 200))}${JSON.stringify(item.response).length > 200 ? '...' : ''}</pre>
                     </div>
                 `).join('');
             }
@@ -1221,11 +2128,6 @@
         }
     }
 
-    // ============ Bypass Mode Functions ============
-
-    let bypassHistory = [];
-    let manualHistory = [];
-
     async function loadBypassConfig() {
         try {
             const response = await fetch('/api/bypass/config');
@@ -1268,7 +2170,6 @@
 
             if (response.ok) {
                 showToast('✅ 配置已保存');
-                // Clear password field after saving
                 document.getElementById('bypass-apikey').value = '';
             } else {
                 const error = await response.json();
@@ -1291,7 +2192,6 @@
             } else {
                 const error = await response.json();
                 showToast(`❌ 操作失败: ${error.detail}`, true);
-                // Revert checkbox
                 document.getElementById('bypass-enabled').checked = !enabled;
             }
         } catch (error) {
@@ -1304,10 +2204,10 @@
         const statusText = document.getElementById('bypass-status-text');
         if (enabled) {
             statusText.textContent = '✅ 启用';
-            statusText.style.color = '#059669';
+            statusText.style.color = '#58c47a';
         } else {
             statusText.textContent = '⏸️ 禁用';
-            statusText.style.color = '#6b7280';
+            statusText.style.color = 'rgba(245, 236, 217, 0.72)';
         }
     }
 
@@ -1353,7 +2253,6 @@
             const elapsed = record.elapsed_ms ?
                 ` • ${record.elapsed_ms.toFixed(0)}ms` : '';
 
-            // Format JSON with indentation
             const formatJson = (obj) => {
                 if (!obj) return 'N/A';
                 return JSON.stringify(obj, null, 2);
@@ -1367,12 +2266,8 @@
                     <div class="bypass-record-header" onclick="toggleBypassRecord(${index})">
                         <div class="flex items-center gap-2 flex-1">
                             <span class="expand-icon">▶</span>
-                            <span class="text-xs text-gray-500">
-                                ${record.timestamp.toLocaleTimeString()}
-                            </span>
-                            <span class="text-xs text-gray-600">
-                                ${record.client_ip}
-                            </span>
+                            <span class="text-xs text-gray-500">${record.timestamp.toLocaleTimeString()}</span>
+                            <span class="text-xs text-gray-600">${escapeHtml(record.client_ip)}</span>
                         </div>
                         <div>
                             ${statusBadge}
@@ -1383,7 +2278,7 @@
                         <div class="bypass-record-content">
                             <div class="mb-3">
                                 <div class="text-xs font-semibold text-gray-700 mb-1">目标地址:</div>
-                                <div class="text-xs text-gray-600 break-all">${record.target_url}</div>
+                                <div class="text-xs text-gray-600 break-all">${escapeHtml(record.target_url)}</div>
                             </div>
 
                             ${record.request_body ? `
@@ -1393,11 +2288,11 @@
                                     <button
                                         id="copy-bypass-req-${index}"
                                         class="copy-btn"
-                                        data-copy="${requestJson.replace(/"/g, '&quot;')}"
+                                        data-copy="${escapeHtml(requestJson)}"
                                         onclick="event.stopPropagation(); copyToClipboard('copy-bypass-req-${index}')">
                                         📋 复制
                                     </button>
-                                    <div class="bypass-record-json">${requestJson}</div>
+                                    <div class="bypass-record-json">${escapeHtml(requestJson)}</div>
                                 </div>
                             </div>
                             ` : ''}
@@ -1409,18 +2304,18 @@
                                     <button
                                         id="copy-bypass-res-${index}"
                                         class="copy-btn"
-                                        data-copy="${responseJson.replace(/"/g, '&quot;')}"
+                                        data-copy="${escapeHtml(responseJson)}"
                                         onclick="event.stopPropagation(); copyToClipboard('copy-bypass-res-${index}')">
                                         📋 复制
                                     </button>
-                                    <div class="bypass-record-json">${responseJson}</div>
+                                    <div class="bypass-record-json">${escapeHtml(responseJson)}</div>
                                 </div>
                             </div>
                             ` : ''}
 
                             ${record.error ? `
                             <div class="text-xs text-red-600 bg-red-50 p-2 rounded">
-                                <strong>错误:</strong> ${record.error}
+                                <strong>错误:</strong> ${escapeHtml(record.error)}
                             </div>
                             ` : ''}
                         </div>
@@ -1439,18 +2334,23 @@
 
     function copyToClipboard(elementId) {
         const btn = document.getElementById(elementId);
-        const text = btn.getAttribute('data-copy');
+        const text = btn.getAttribute('data-copy')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
 
         navigator.clipboard.writeText(text).then(() => {
             const originalText = btn.innerHTML;
             btn.innerHTML = '✓ 已复制';
-            btn.style.background = '#10b981';
+            btn.style.background = 'rgba(88, 196, 122, 0.26)';
             setTimeout(() => {
                 btn.innerHTML = originalText;
                 btn.style.background = '';
             }, 2000);
         }).catch(err => {
-            showToast('复制失败: ' + err.message, 'error');
+            showToast('复制失败: ' + err.message, true);
         });
     }
 
@@ -1461,9 +2361,11 @@
         }
     }
 
-    // Initialize on load
+    resetRequestDisplay();
+    renderManualHistory();
     refreshIPList();
     loadBypassConfig();
+    enableSend(false);
 </script>
 </body>
 </html>
